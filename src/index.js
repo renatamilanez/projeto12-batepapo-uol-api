@@ -12,8 +12,8 @@ server.use(cors());
 
 let now = dayjs();
 
-//TROCAR PARA PROCESS.ENV, NÃO ESQUECER!!!
-const mongoClient = new MongoClient('mongodb://localhost:27017')
+//TROCAR PARA PROCESS.ENV
+const mongoClient = new MongoClient('mongodb://localhost:27017');
 
 let db;
 mongoClient.connect().then(() => {
@@ -35,6 +35,7 @@ server.get('/participants', async (req, res) => {
         const participants = await db.collection('participants').find().toArray();
         res.send(participants);
     } catch (error) {
+        console.log(error);
         res.sendStatus(500);
     }
 });
@@ -67,6 +68,7 @@ server.post('/participants', async (req, res) => {
         await db.collection('messages').insertOne({from, to, text, type, time});
         res.sendStatus(201);
     } catch (error) {
+        console.log(error);
         res.sendStatus(500);
     }
 });
@@ -94,6 +96,7 @@ server.post('/messages', async (req, res) => {
         await db.collection('messages').insertOne({from, to, text, type, time});
         res.sendStatus(201);
     } catch (error) {
+        console.log(error);
         res.sendStatus(500);
     };
 });
@@ -120,20 +123,39 @@ server.get('/messages?:limit', async (req, res) => {
 
 server.post('status', async (req, res) => {
     const {user} = req.headers;
+    const lastStatus = Date.now();
 
     const existentUser = await db.collection('participants').findOne({name: user});
     if(!existentUser){
-        res.sendStatus(404);
+        res.sendStatus(404); 
     }
 
     try {
-        
+        const actualization = await db.collection('participant').updateOne({name: user}, {$set: lastStatus});
         res.sendStatus(200);
     } catch (error) {
         console.log(error);
         res.sendStatus(500);
     }
 })
+
+async function removeUser(){
+    const timeNow = Date.now();
+    const participants = await db.collection('participants').find().toArray();
+
+    const to = 'Todos';
+    const text = 'sai da sala...';
+    const type = 'status';
+    const time = now.format("HH:MM:SS");
+
+    participants.forEach(participant => {
+        if(timeNow - participant.lastStatus > 10000){
+            db.collection('participants').deleteOne({name: participant.name});
+            db.collection('messages').insertOne({from: participant.name, to, text, type, time})
+        }
+    });
+};
+setInterval(removeUser, 15000);
 
 server.listen(4000, () => {
     console.log('Listening on port 4000')

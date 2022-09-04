@@ -4,6 +4,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import joi from "joi";
 import dayjs from 'dayjs';
 import dotenv from "dotenv";
+import { stripHtml } from "string-strip-html";
 dotenv.config();
 
 const server = express();
@@ -44,7 +45,7 @@ server.post('/participants', async (req, res) => {
     const user = req.body;
     const validation = participantSchema.validate(user, {abortEarly: false});
 
-    const name = user.name;
+    const name = stripHtml(user.name).result.trim();
     const lastStatus = Date.now();
     
     if(validation.error){
@@ -74,9 +75,14 @@ server.post('/participants', async (req, res) => {
 
 server.post('/messages', async (req, res) => {
     const message = req.body;
-    const {user} = req.headers;
+    let {user} = req.headers;
     const from = user;
-    const {to, text, type} = req.body;
+    let {to, text, type} = req.body;
+    user = stripHtml(user).result.trim();
+    to = stripHtml(to).result.trim();
+    text = stripHtml(text).result.trim();
+
+
     const time = now.format("HH:mm:ss");
 
     const validation = messageSchema.validate(message, {abortEarly: false});
@@ -201,7 +207,7 @@ async function removeUser(){
         }
     });
 };
-//setInterval(removeUser, 15000);
+setInterval(removeUser, 15000);
 
 server.listen(4000, () => {
     console.log('Listening on port 4000')

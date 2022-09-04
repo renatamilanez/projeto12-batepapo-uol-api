@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import joi from "joi";
 import dayjs from 'dayjs';
 import dotenv from "dotenv";
@@ -42,7 +42,6 @@ server.get('/participants', async (req, res) => {
 
 server.post('/participants', async (req, res) => {
     const user = req.body;
-    console.log(user);
     const validation = participantSchema.validate(user, {abortEarly: false});
 
     const name = user.name;
@@ -131,12 +130,59 @@ server.post('status', async (req, res) => {
     }
 
     try {
-        const actualization = await db.collection('participant').updateOne({name: user}, {$set: lastStatus});
+        const actualization = await db.collection('participants').updateOne({name: user}, {$set: lastStatus});
         res.sendStatus(200);
     } catch (error) {
         console.log(error);
         res.sendStatus(500);
     }
+})
+
+server.delete('/messages/:id', async (req, res) => {
+    const {user} = req.headers;
+    const {id} = req.params;
+    
+    try {
+        const existMessage = await db.collection('messages').findOne({_id: ObjectId(id)});
+        if(!existMessage){
+            return res.sendStatus(404);
+        } if(existMessage.from !== user){
+            return res.sendStatus(401);
+        }
+        await db.collection('messages').deleteOne({_id: ObjectId(id)});
+        res.sendStatus(200);
+    } catch (error) {
+        console.log(error);
+        res.sendStatus(500);
+    };
+})
+
+server.put('messages/:id', async (req, res) => {
+    const {to, text, type} = req.body;
+    const {user} = req.headers;
+    const message = req.body;
+    const {id} = req.params;
+
+    try {
+        const validation = messageSchema.validate(message, {abortEarly: false});
+        if(validation.error){
+            const errors = validation.error.details.map(detail => detail.message);
+            return res.sendStatus(422).send(errors);
+        };
+
+        const existMessage = await db.collection('messages').findOne({_id: ObjectId(id)});
+        if(!existMessage){
+            return res.sendStatus(404);
+        } if(existMessage.from !== user){
+            return res.sendStatus(401);
+        }
+        
+        const actualization = await db.collection('messages').updateOne({_id: ObjectId(id)}, {$set: to, text, type});
+        res.sendStatus(200);
+    } catch (error) {
+        console.log(error);
+        res.sendStatus(500);
+    };
 })
 
 async function removeUser(){
@@ -155,7 +201,7 @@ async function removeUser(){
         }
     });
 };
-setInterval(removeUser, 15000);
+//setInterval(removeUser, 15000);
 
 server.listen(4000, () => {
     console.log('Listening on port 4000')

@@ -16,6 +16,9 @@ let now = dayjs();
 const mongoClient = new MongoClient('mongodb://localhost:27017');
 
 let db;
+
+
+console.log(process.env.MONGO_URI)
 mongoClient.connect().then(() => {
     db = mongoClient.db('batePapoUol');
 });
@@ -209,6 +212,6 @@ async function removeUser(){
 };
 setInterval(removeUser, 15000);
 
-server.listen(5000, () => {
+server.listen(3000, (req,res) => {
     console.log('Listening on port 5000');
 });

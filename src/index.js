@@ -80,7 +80,7 @@ server.get('/messages?:limit', async (req, res) => {
         const messages = await db.collection('messages').find().toArray();
         let filteredMessages = messages.filter(value => value.from === user || value.to === user || value.to === 'Todos');
 
-        if(!limit){
+        if(!limit || limit === 0 || limit < 0){
             res.send(filteredMessages);
         } else {
             filteredMessages = filteredMessages.slice(-limit);
@@ -172,7 +172,8 @@ server.put('/messages/:id', async (req, res) => {
 });
 
 server.post('/status', async (req, res) => {
-    const {user} = req.headers;
+    let {user} = req.headers;
+    user = stripHtml(user.name).result.trim();
     const lastStatus = Date.now();
 
     const existentUser = await db.collection('participants').findOne({name: user});
